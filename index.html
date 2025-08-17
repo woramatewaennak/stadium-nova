@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>สถิติการทำนายผลฟุตบอล — GPT vs Gemini</title>
+<style>
+  :root{
+    --bg:#0b1021;
+    --card:#12183a;
+    --muted:#9aa4c7;
+    --text:#e9efff;
+    --accent:#6ee7ff;
+    --accent2:#a78bfa;
+    --ok:#16a34a;
+    --bad:#dc2626;
+    --warn:#f59e0b;
+    --line:#1e2550;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:linear-gradient(180deg,#0b1021 0%,#0f1430 65%,#0b1021 100%);
+    color:var(--text);font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans Thai", "Noto Sans", Arial, sans-serif;
+  }
+  header{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter: blur(10px);
+    background:linear-gradient(90deg,rgba(110,231,255,.14),rgba(167,139,250,.14));
+    border-bottom:1px solid var(--line);
+  }
+  .wrap{max-width:1200px;margin:0 auto;padding:16px}
+  .titlebar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .brand{
+    display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;background:#0e1533;border:1px solid var(--line);
+  }
+  .brand img{width:22px;height:22px}
+  h1{font-size:20px;margin:0 10px 0 0;white-space:nowrap}
+  .sub{color:var(--muted);font-size:13px}
+
+  .toolbar{
+    display:flex;flex-wrap:wrap;gap:10px;margin-top:12px
+  }
+  button, .ghost{
+    background:linear-gradient(180deg, #1b2355, #151b44);
+    border:1px solid var(--line);color:var(--text);
+    padding:9px 12px;border-radius:12px;cursor:pointer;font-weight:600
+  }
+  button:hover{filter:brightness(1.08)}
+  .ghost{background:transparent}
+  .danger{border-color:#3a1320;background:linear-gradient(180deg,#2a0f19,#1b0b12);color:#ffb3b8}
+  .success{border-color:#0d3520;background:linear-gradient(180deg,#123820,#0e2918);color:#b5ffd0}
+  .accent{border-color:#214b6b;background:linear-gradient(180deg,#0f2a3a,#0b2030)}
+  .file{position:relative;overflow:hidden}
+  .file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+  .stats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0
+  }
+  .card{
+    background:linear-gradient(180deg,#12183a,#0f1430);
+    border:1px solid var(--line);border-radius:16px;padding:14px
+  }
+  .kpi{display:flex;align-items:center;justify-content:space-between}
+  .kpi .label{color:var(--muted);font-size:12px}
+  .kpi .val{font-size:22px;font-weight:800}
+
+  table{width:100%;border-collapse:separate;border-spacing:0 10px}
+  thead th{
+    text-align:left;font-size:12px;color:#b9c4ff;padding:6px 8px
+  }
+  tbody tr{
+    background:linear-gradient(180deg,#10163a,#0e1433);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden
+  }
+  tbody td{
+    padding:8px;vertical-align:middle;border-top:1px solid var(--line);border-bottom:1px solid var(--line)
+  }
+  tbody tr td:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
+  tbody tr td:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
+
+  .teamCell{display:flex;align-items:center;gap:8px;min-width:230px}
+  .crest{
+    width:28px;height:28px;border-radius:50%;background:#0d1430;border:1px solid var(--line);object-fit:contain;padding:2px
+  }
+  select, input[type="number"], input[type="date"], input[type="time"]{
+    background:#0e1433;border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:10px;outline:none;min-width:100px
+  }
+  input[type="number"]{width:66px}
+  .scoreBox{display:flex;align-items:center;gap:6px}
+  .scoreBox span{color:var(--muted)}
+  .judge{display:flex;gap:6px;align-items:center}
+  .badge{
+    padding:6px 10px;border-radius:10px;font-weight:700;font-size:12px;border:1px solid var(--line)
+  }
+  .g{background:rgba(22,163,74,.12);color:#b6ffb6;border-color:#1f6b3c}
+  .r{background:rgba(220,38,38,.12);color:#ffb3b3;border-color:#6b1f1f}
+  .p{background:rgba(253,224,71,.12);color:#ffe68f;border-color:#6b5a1f}
+  .tiny{font-size:12px;color:var(--muted)}
+  .center{display:flex;align-items:center;gap:8px}
+  .warn{outline:2px dashed var(--warn)}
+  .muted{color:var(--muted)}
+  .del{background:transparent;border:1px dashed #3a1b1b;color:#ff9b9b}
+  .del:hover{background:#2a1111}
+
+  footer{padding:24px 0;color:var(--muted);font-size:12px;border-top:1px solid var(--line);margin-top:18px}
+  a{color:#9ad9ff}
+  @media (max-width:980px){
+    .stats{grid-template-columns:1fr}
+    .teamCell{min-width:unset}
+    select{min-width:140px}
+    table{display:block;overflow:auto;white-space:nowrap}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="titlebar">
+      <h1>สถิติการทำนายผลฟุตบอล</h1>
+      <div class="brand" title="ChatGPT">
+        <img id="logoGPT" alt="GPT logo" />
+        <div>GPT</div>
+      </div>
+      <div class="brand" title="Google Gemini">
+        <img id="logoGemini" alt="Gemini logo" />
+        <div>Gemini</div>
+      </div>
+      <div class="sub">พรีเมียร์ลีก อังกฤษ — เก็บผลทาย, ติกถูก/ผิด, นับสถิติอัตโนมัติ</div>
+    </div>
+
+    <div class="toolbar">
+      <button id="addRow" class="accent">➕ เพิ่มแมตช์</button>
+      <button id="autoFromTruth" class="success">⚙️ ประเมินอัตโนมัติ (จาก “ผลจริง”)</button>
+      <button id="exportBtn">⬇️ ส่งออก JSON</button>
+      <label class="file ghost">⬆️ นำเข้า JSON<input type="file" id="importFile" accept="application/json"></label>
+      <button id="reset" class="danger">🗑️ รีเซ็ตทั้งหมด</button>
+      <span class="tiny">ข้อมูลจะบันทึกอัตโนมัติในเบราว์เซอร์ของคุณ</span>
+    </div>
+
+    <div class="stats">
+      <div class="card kpi"><div>
+        <div class="label">จำนวนคู่ที่ประเมินแล้ว</div>
+        <div class="val" id="kTotal">0</div></div>
+        <div class="tiny">นับเฉพาะคู่อ้างอิงว่า “ถูก” หรือ “ผิด” อย่างน้อยหนึ่งโมเดล</div>
+      </div>
+      <div class="card kpi"><div>
+        <div class="label">ความแม่นยำ GPT</div>
+        <div class="val" id="kGPT">0%</div></div>
+        <div class="badge p" id="gptCount">0 ถูก / 0 ผิด</div>
+      </div>
+      <div class="card kpi"><div>
+        <div class="label">ความแม่นยำ Gemini</div>
+        <div class="val" id="kGemini">0%</div></div>
+        <div class="badge p" id="gemCount">0 ถูก / 0 ผิด</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>วันที่</th>
+        <th>เวลา</th>
+        <th>เจ้าบ้าน</th>
+        <th>ทีมเยือน</th>
+        <th>GPT ทาย</th>
+        <th>Gemini ทาย</th>
+        <th>ผลจริง (ถ้าทราบ)</th>
+        <th>ตัดสิน GPT</th>
+        <th>ตัดสิน Gemini</th>
+        <th>ลบ</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <footer>
+    <div>โลโก้ทีมดึงแบบไดนามิกจาก Wikipedia (อาจใช้เวลาไม่กี่วินาทีเมื่อเปิดหน้า) • โลโก้ GPT และ Gemini ใช้ไฟล์สาธารณะจาก Wikimedia Commons</div>
+    <div class="muted">ที่มา: รายชื่อสโมสรพรีเมียร์ลีกฤดูกาล 2025–26 (Wikipedia), โลโก้ ChatGPT / Google Gemini (Wikimedia Commons)</div>
+  </footer>
+</div>
+
+<script>
+/* ===================== ข้อมูลทีมพรีเมียร์ลีก 2025–26 ===================== */
+const TEAMS = [
+  { name: "Arsenal", wiki: "Arsenal F.C." },
+  { name: "Aston Villa", wiki: "Aston Villa F.C." },
+  { name: "Bournemouth", wiki: "AFC Bournemouth" },
+  { name: "Brentford", wiki: "Brentford F.C." },
+  { name: "Brighton & Hove Albion", wiki: "Brighton & Hove Albion F.C." },
+  { name: "Burnley", wiki: "Burnley F.C." },
+  { name: "Chelsea", wiki: "Chelsea F.C." },
+  { name: "Crystal Palace", wiki: "Crystal Palace F.C." },
+  { name: "Everton", wiki: "Everton F.C." },
+  { name: "Fulham", wiki: "Fulham F.C." },
+  { name: "Leeds United", wiki: "Leeds United F.C." },
+  { name: "Liverpool", wiki: "Liverpool F.C." },
+  { name: "Manchester City", wiki: "Manchester City F.C." },
+  { name: "Manchester United", wiki: "Manchester United F.C." },
+  { name: "Newcastle United", wiki: "Newcastle United F.C." },
+  { name: "Nottingham Forest", wiki: "Nottingham Forest F.C." },
+  { name: "Sunderland", wiki: "Sunderland A.F.C." },
+  { name: "Tottenham Hotspur", wiki: "Tottenham Hotspur F.C." },
+  { name: "West Ham United", wiki: "West Ham United F.C." },
+  { name: "Wolverhampton Wanderers", wiki: "Wolverhampton Wanderers F.C." },
+];
+
+// โลโก้แบรนด์ (ใช้ตัวเปลี่ยนเส้นทางของ Commons ให้ลองโหลดภาพล่าสุด)
+const BRAND_LOGOS = {
+  GPT: "https://commons.wikimedia.org/wiki/Special:FilePath/ChatGPT-Logo.svg",
+  Gemini: "https://commons.wikimedia.org/wiki/Special:FilePath/Google_Gemini_logo_2025.svg"
+};
+
+// แคชโลโก้ทีม
+const teamLogos = {};
+const defaultCrest = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#6ee7ff"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+  <circle cx="40" cy="40" r="38" fill="#0e1433" stroke="#26306e" stroke-width="3"/>
+  <text x="50%" y="54%" text-anchor="middle" font-size="34" font-family="system-ui,Segoe UI,Roboto" fill="url(#g)">⚽</text>
+  </svg>`);
+
+/* ===================== โครงสร้างข้อมูล & Storage ===================== */
+const STORAGE_KEY = "pl-predictor-v1";
+let matches = load();
+
+function uid(){ return Math.random().toString(36).slice(2,10) }
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ console.warn(e); return [] }
+}
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(matches)) }
+
+/* ===================== ดึงโลโก้ทีมจาก Wikipedia Summary API ===================== */
+async function fetchLogoFor(teamName, wikiTitle){
+  if(teamLogos[teamName]) return teamLogos[teamName];
+  const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`;
+  try{
+    const res = await fetch(url, {headers:{'Accept': 'application/json'}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const src = (data.originalimage && data.originalimage.source) || (data.thumbnail && data.thumbnail.source);
+    teamLogos[teamName] = src || defaultCrest;
+  }catch(e){
+    teamLogos[teamName] = defaultCrest;
+  }
+  return teamLogos[teamName];
+}
+async function prefetchAllLogos(){
+  await Promise.all(TEAMS.map(t => fetchLogoFor(t.name, t.wiki)));
+  // อัปเดตภาพที่โชว์อยู่ในตารางถ้ามี
+  document.querySelectorAll('[data-crest-for]').forEach(img=>{
+    const team = img.getAttribute('data-crest-for');
+    if(teamLogos[team]) img.src = teamLogos[team];
+  });
+}
+
+/* ===================== เรนเดอร์ตาราง ===================== */
+function teamSelect(selected){
+  const sel = document.createElement('select');
+  TEAMS.forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t.name; opt.textContent = t.name;
+    if(t.name===selected) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+function scoreBox(score={h:"",a:""}){
+  const wrap = document.createElement('div'); wrap.className='scoreBox';
+  const inH = document.createElement('input'); inH.type='number'; inH.min='0'; inH.placeholder='H'; inH.value = score.h ?? '';
+  const dash = document.createElement('span'); dash.textContent='-';
+  const inA = document.createElement('input'); inA.type='number'; inA.min='0'; inA.placeholder='A'; inA.value = score.a ?? '';
+  wrap.append(inH,dash,inA);
+  return {wrap,inH,inA};
+}
+
+function judgeCell(model, row){
+  const box = document.createElement('div'); box.className='judge';
+  const status = row[model+'Result'] || 'pending';
+  const badge = document.createElement('div');
+  badge.className='badge ' + (status==='correct'?'g':status==='wrong'?'r':'p');
+  badge.textContent = status==='correct'?'ถูก':status==='wrong'?'ผิด':'รอตัดสิน';
+  const ok = document.createElement('button'); ok.className='success'; ok.textContent='ถูก';
+  const ng = document.createElement('button'); ng.className='danger'; ng.textContent='ผิด';
+
+  ok.onclick = ()=>{ row[model+'Result']='correct'; render(); save(); };
+  ng.onclick = ()=>{ row[model+'Result']='wrong'; render(); save(); };
+
+  box.append(badge, ok, ng);
+  return box;
+}
+
+function render(){
+  const tbody = document.getElementById('tbody'); tbody.innerHTML='';
+  matches.forEach((row, i)=>{
+    const tr = document.createElement('tr');
+
+    const tdIdx = document.createElement('td'); tdIdx.textContent = i+1;
+
+    const tdDate = document.createElement('td');
+    const inDate = document.createElement('input'); inDate.type='date'; inDate.value = row.date || '';
+    inDate.onchange = ()=>{ row.date = inDate.value; save(); };
+    tdDate.appendChild(inDate);
+
+    const tdTime = document.createElement('td');
+    const inTime = document.createElement('input'); inTime.type='time'; inTime.value = row.time || '';
+    inTime.onchange = ()=>{ row.time = inTime.value; save(); };
+    tdTime.appendChild(inTime);
+
+    const tdHome = document.createElement('td');
+    const wrapHome = document.createElement('div'); wrapHome.className='teamCell';
+    const crestH = document.createElement('img'); crestH.className='crest'; crestH.alt='crest'; crestH.src = teamLogos[row.homeTeam] || defaultCrest; crestH.setAttribute('data-crest-for', row.homeTeam || '');
+    const selH = teamSelect(row.homeTeam||'');
+    selH.onchange = async ()=>{
+      // ห้ามเลือกทีมซ้ำคู่นี้
+      if(selH.value === selA.value){
+        selH.classList.add('warn'); setTimeout(()=>selH.classList.remove('warn'),1200);
+        return;
+      }
+      row.homeTeam = selH.value;
+      crestH.setAttribute('data-crest-for', row.homeTeam);
+      crestH.src = teamLogos[row.homeTeam] || await fetchLogoFor(row.homeTeam, TEAMS.find(t=>t.name===row.homeTeam).wiki);
+      save();
+    };
+    wrapHome.append(crestH, selH); tdHome.appendChild(wrapHome);
+
+    const tdAway = document.createElement('td');
+    const wrapAway = document.createElement('div'); wrapAway.className='teamCell';
+    const crestA = document.createElement('img'); crestA.className='crest'; crestA.alt='crest'; crestA.src = teamLogos[row.awayTeam] || defaultCrest; crestA.setAttribute('data-crest-for', row.awayTeam || '');
+    const selA = teamSelect(row.awayTeam||'');
+    selA.onchange = async ()=>{
+      if(selA.value === selH.value){
+        selA.classList.add('warn'); setTimeout(()=>selA.classList.remove('warn'),1200);
+        return;
+      }
+      row.awayTeam = selA.value;
+      crestA.setAttribute('data-crest-for', row.awayTeam);
+      crestA.src = teamLogos[row.awayTeam] || await fetchLogoFor(row.awayTeam, TEAMS.find(t=>t.name===row.awayTeam).wiki);
+      save();
+    };
+    wrapAway.append(crestA, selA); tdAway.appendChild(wrapAway);
+
+    const tdGPT = document.createElement('td');
+    const gptSB = scoreBox(row.gptPred||{});
+    gptSB.inH.onchange = ()=>{ row.gptPred = row.gptPred||{}; row.gptPred.h = gptSB.inH.value; save(); };
+    gptSB.inA.onchange = ()=>{ row.gptPred = row.gptPred||{}; row.gptPred.a = gptSB.inA.value; save(); };
+    tdGPT.appendChild(gptSB.wrap);
+
+    const tdGem = document.createElement('td');
+    const gemSB = scoreBox(row.gemPred||{});
+    gemSB.inH.onchange = ()=>{ row.gemPred = row.gemPred||{}; row.gemPred.h = gemSB.inH.value; save(); };
+    gemSB.inA.onchange = ()=>{ row.gemPred = row.gemPred||{}; row.gemPred.a = gemSB.inA.value; save(); };
+    tdGem.appendChild(gemSB.wrap);
+
+    const tdTrue = document.createElement('td');
+    const truthSB = scoreBox(row.truth||{});
+    truthSB.inH.onchange = ()=>{ row.truth = row.truth||{}; row.truth.h = truthSB.inH.value; save(); };
+    truthSB.inA.onchange = ()=>{ row.truth = row.truth||{}; row.truth.a = truthSB.inA.value; save(); };
+    tdTrue.appendChild(truthSB.wrap);
+
+    const tdJG = document.createElement('td'); tdJG.appendChild(judgeCell('gpt', row));
+    const tdJM = document.createElement('td'); tdJM.appendChild(judgeCell('gemini', row));
+
+    const tdDel = document.createElement('td');
+    const del = document.createElement('button'); del.className='del'; del.textContent='ลบ';
+    del.onclick = ()=>{ matches = matches.filter(m=>m.id!==row.id); render(); save(); };
+    tdDel.appendChild(del);
+
+    tr.append(tdIdx, tdDate, tdTime, tdHome, tdAway, tdGPT, tdGem, tdTrue, tdJG, tdJM, tdDel);
+    tbody.appendChild(tr);
+  });
+
+  // อัปเดต KPI
+  let gptC=0,gptW=0,gemC=0,gemW=0, considered=0;
+  matches.forEach(r=>{
+    if(r.gptResult==='correct') gptC++;
+    if(r.gptResult==='wrong') gptW++;
+    if(r.geminiResult==='correct') gemC++;
+    if(r.geminiResult==='wrong') gemW++;
+    if(r.gptResult && r.gptResult!=='pending' || r.geminiResult && r.geminiResult!=='pending') considered++;
+  });
+  const pct = (a,b)=> (a+b)>0 ? Math.round((a/(a+b))*100) : 0;
+  document.getElementById('kTotal').textContent = considered;
+  document.getElementById('kGPT').textContent = pct(gptC,gptW) + '%';
+  document.getElementById('kGemini').textContent = pct(gemC,gemW) + '%';
+  document.getElementById('gptCount').textContent = `${gptC} ถูก / ${gptW} ผิด`;
+  document.getElementById('gemCount').textContent = `${gemC} ถูก / ${gemW} ผิด`;
+}
+
+/* ===================== ควบคุมปุ่มต่างๆ ===================== */
+document.getElementById('addRow').onclick = ()=>{
+  const now = new Date();
+  const pad = n=> String(n).padStart(2,'0');
+  matches.unshift({
+    id:uid(),
+    date:`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
+    time:`${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    homeTeam:"",
+    awayTeam:"",
+    gptPred:{h:"",a:""},
+    gemPred:{h:"",a:""},
+    truth:{h:"",a:""},
+    gptResult:'pending',
+    geminiResult:'pending'
+  });
+  render(); save();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+document.getElementById('reset').onclick = ()=>{
+  if(confirm('ลบข้อมูลทั้งหมด?')){ matches=[]; save(); render(); }
+};
+
+document.getElementById('exportBtn').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(matches,null,2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pl-predictor-backup-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+  a.click();
+};
+
+document.getElementById('importFile').onchange = (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    try{
+      const arr = JSON.parse(fr.result);
+      if(Array.isArray(arr)){ matches = arr; save(); render(); alert('นำเข้าข้อมูลสำเร็จ'); }
+      else alert('ไฟล์ไม่ถูกต้อง');
+    }catch(err){ alert('อ่านไฟล์ไม่สำเร็จ'); }
+  };
+  fr.readAsText(file);
+};
+
+document.getElementById('autoFromTruth').onclick = ()=>{
+  let updated = 0;
+  matches.forEach(r=>{
+    const th = Number(r.truth?.h), ta = Number(r.truth?.a);
+    if(Number.isFinite(th) && Number.isFinite(ta)){
+      const gph = Number(r.gptPred?.h), gpa = Number(r.gptPred?.a);
+      const geH = Number(r.gemPred?.h), geA = Number(r.gemPred?.a);
+      if(Number.isFinite(gph) && Number.isFinite(gpa)){
+        r.gptResult = (gph===th && gpa===ta) ? 'correct' : 'wrong'; updated++;
+      }
+      if(Number.isFinite(geH) && Number.isFinite(geA)){
+        r.geminiResult = (geH===th && geA===ta) ? 'correct' : 'wrong'; updated++;
+      }
+    }
+  });
+  save(); render();
+  if(updated===0) alert('กรุณากรอก “ผลจริง” ก่อน หรือยังไม่มีคู่ที่ต้องประเมิน');
+};
+
+/* ===================== โหลดโลโก้แบรนด์ + เตรียมเพจ ===================== */
+document.getElementById('logoGPT').src = BRAND_LOGOS.GPT;
+document.getElementById('logoGemini').src = BRAND_LOGOS.Gemini;
+
+render();
+prefetchAllLogos(); // ดึงโลโก้ทีมทั้งหมดล่วงหน้า
+</script>
+</body>
+</html>
